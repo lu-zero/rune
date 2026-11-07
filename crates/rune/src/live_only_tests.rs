@@ -44,7 +44,7 @@ fn app(misuse: bool) -> Runtime<S> {
 }
 
 fn key(code: PhysicalKeyCode, key: Key, pressed: bool) -> (PhysicalInput, Option<KeyEvent>) {
-    (PhysicalInput::Key { key: code, mods: Mods::default(), pressed, repeat: false }, Some(KeyEvent { key, mods: Mods::default() }))
+    (PhysicalInput::Key { key: code, mods: Mods::default(), pressed, repeat: false, text: None, consumed_mods: Default::default() }, Some(KeyEvent { key, mods: Mods::default() }))
 }
 
 fn camera_x(rt: &Runtime<S>) -> f32 {
@@ -83,7 +83,7 @@ fn a_physical_release_heard_at_rest_can_be_live_only() {
     for _ in 0..60 { rt.frame(1.0 / 120.0); }
     let before = rt.stats.commits;
     // No logical key: the focused handler hears it at once, outside a frame.
-    let event = PhysicalInput::Key { key: PhysicalKeyCode::ShiftLeft, mods: Mods::default(), pressed: false, repeat: false };
+    let event = PhysicalInput::Key { key: PhysicalKeyCode::ShiftLeft, mods: Mods::default(), pressed: false, repeat: false, text: None, consumed_mods: Default::default() };
     assert!(rt.physical_with_fallback(event, None), "it still asks for a frame to draw");
     assert!(!rt.dirty);
     rt.frame(1.0 / 120.0);

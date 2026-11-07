@@ -28,7 +28,7 @@ fn dvorak_shift_command_o_reaches_the_app_with_a_field_focused() {
     let command = if cfg!(target_os = "macos") { ModifiersState::SUPER } else { ModifiersState::CONTROL };
     let logical = map_key(&WKey::Character("O".into()), command | ModifiersState::SHIFT).unwrap();
     rt.physical_with_fallback(PhysicalInput::Key {
-        key: PhysicalKeyCode::KeyS, mods: logical.mods, pressed: true, repeat: false,
+        key: PhysicalKeyCode::KeyS, mods: logical.mods, pressed: true, repeat: false, text: None, consumed_mods: Default::default()
     }, Some(logical));
     rt.frame(0.0);
     assert!(rt.state.opened);
@@ -49,7 +49,7 @@ fn dvorak_paste_uses_the_logical_character_not_the_physical_period() {
     let logical = map_key(&WKey::Character("v".into()), command).unwrap();
     assert_eq!(logical.key, Key::Command('v'));
     rt.physical_with_fallback(PhysicalInput::Key {
-        key: PhysicalKeyCode::Period, mods: logical.mods, pressed: true, repeat: false,
+        key: PhysicalKeyCode::Period, mods: logical.mods, pressed: true, repeat: false, text: None, consumed_mods: Default::default()
     }, Some(logical));
     rt.frame(0.0);
     let target = rt.paste_request.take().expect("Dvorak Command-V requests the clipboard");
