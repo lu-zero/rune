@@ -98,6 +98,54 @@ fn unidentified(event: &winit::event::KeyEvent, m: ModifiersState) -> Option<Key
     Some(KeyEvent { key, mods })
 }
 
+/// The platform string for this key. Not `text_with_all_modifiers`:
+/// a control chord's `\x01` stays out of `text`, and the terminal encoder applies `ctrl_byte`.
+pub(crate) fn platform_text(event: &winit::event::KeyEvent) -> Option<String> {
+    let text = event.text.as_deref()?;
+    if text.is_empty() { None } else { Some(text.to_owned()) }
+}
+
+/// Modifiers the platform spent producing [`platform_text`].
+/// Compared with `key_without_modifiers`, the same string [`key_base`] reads.
+/// `logo` is never consumed. `physical_then` does not call this.
+pub(crate) fn consumed_mods(event: &winit::event::KeyEvent, mods: Mods) -> Mods {
+    let text = event.text.as_deref().filter(|text| !text.is_empty());
+    consumed_from(mods, text, unmodified_text(event).as_deref())
+}
+
+/// `unmodified` is the key with no modifiers, or `None` when the platform has no such string.
+pub(crate) fn consumed_from(mods: Mods, text: Option<&str>, unmodified: Option<&str>) -> Mods {
+    let differs = match (text, unmodified) {
+        (Some(text), Some(base)) => text != base,
+        (Some(_), None) => true,
+        _ => false,
+    };
+    let mut consumed = Mods::default();
+    // Windows Left Ctrl + Left Alt that `map_key` already classifies as text is AltGr.
+    if cfg!(target_os = "windows") && mods.ctrl && mods.alt && text.is_some() {
+        consumed.ctrl = true;
+        consumed.alt = true;
+        return consumed;
+    }
+    if mods.alt && differs { consumed.alt = true; }
+    if mods.shift && !mods.ctrl && differs { consumed.shift = true; }
+    consumed
+}
+
+fn unmodified_text(event: &winit::event::KeyEvent) -> Option<String> {
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+        match event.key_without_modifiers() {
+            WKey::Character(s) => Some(s.as_str().to_owned()),
+            WKey::Named(NamedKey::Space) => Some(" ".to_owned()),
+            _ => None,
+        }
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    { let _ = event; None }
+}
+
 /// The character `event`'s key types under the current layout with no modifiers, for
 /// `Tx::key_base`.
 pub(crate) fn key_base(event: &winit::event::KeyEvent) -> Option<char> {

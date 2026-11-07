@@ -67,7 +67,7 @@ impl ShortcutRecorderState {
                 self.hold(mods);
                 if self.is_recording() { Outcome::Consumed } else { Outcome::Pass }
             }
-            PhysicalInput::Key { key, mods, pressed, repeat } => {
+            PhysicalInput::Key { key, mods, pressed, repeat, .. } => {
                 self.hold(mods);
                 if self.finishing == Some(key) {
                     if !pressed { self.finishing = None; }

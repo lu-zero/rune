@@ -241,7 +241,7 @@ impl<S: 'static> Runtime<S> {
             .and_then(|c| c.parse::<crate::Shortcut>().ok())
             .map(|s| s.physical_key());
         if let Some(key) = code {
-            self.physical_with_fallback(crate::PhysicalInput::Key { key, mods, pressed: true, repeat }, Some(event_key));
+            self.physical_with_fallback(crate::PhysicalInput::Key { key, mods, pressed: true, repeat, text: None, consumed_mods: Default::default() }, Some(event_key));
         } else if repeat {
             self.repeat_key(event_key);
         } else {

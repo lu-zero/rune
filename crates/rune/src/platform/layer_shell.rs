@@ -179,7 +179,7 @@ impl Dispatch<WlKeyboard, ()> for State {
                     let pressed = pressed == wl_keyboard::KeyState::Pressed;
                     let fallback = key_event(xkb, key);
                     if let winit::keyboard::PhysicalKey::Code(key) = crate::PhysicalKeyCode::from_scancode(key) {
-                        state.input.push(Input::Physical(crate::PhysicalInput::Key { key, mods: key_mods(xkb), pressed, repeat: false }, fallback));
+                        state.input.push(Input::Physical(crate::PhysicalInput::Key { key, mods: key_mods(xkb), pressed, repeat: false, text: None, consumed_mods: Default::default() }, fallback));
                     } else if let Some(key) = fallback {
                         state.input.push(if pressed { Input::Key(key) } else { Input::KeyUp(key) });
                     }

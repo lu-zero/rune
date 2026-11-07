@@ -369,7 +369,7 @@ pub(crate) fn canvas_input<S: 'static>(rt: &mut Runtime<S>, kind: &Kind, (x, y):
         Kind::ButtonDown(b) => rt.button_down(x, y, *b),
         Kind::ButtonUp(b) => rt.button_up(x, y, *b),
         Kind::KeyUp(k) => { rt.key_up(k.clone()); }
-        Kind::PhysicalKey(event, k, base) => rt.physical_key_input(*event, k.clone(), *base),
+        Kind::PhysicalKey(event, k, base) => rt.physical_key_input(event.clone(), k.clone(), *base),
         _ => return false,
     }
     true
@@ -426,7 +426,7 @@ impl Ev {
             Kind::Menu(item) => ScriptEvent::Menu(item.clone()),
             Kind::PopupMenu(picked) => ScriptEvent::PopupMenu(picked.clone()),
             Kind::FileDialog(path) => ScriptEvent::FileDialog(path.clone()),
-            Kind::Physical(input) => ScriptEvent::Physical(*input),
+            Kind::Physical(input) => ScriptEvent::Physical(input.clone()),
             Kind::Shortcut(chord) => ScriptEvent::Shortcut(chord.clone()),
             Kind::Move => pointer(PointerAction::Move),
             Kind::Down => pointer(PointerAction::Down),

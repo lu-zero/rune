@@ -1,11 +1,33 @@
 //! Physical input is queued with its logical fallback, so a preceding click can claim it.
+use zeroize::Zeroize;
+
 use crate::{Mods, PhysicalKeyCode};
 
-#[derive(Clone, Copy, Debug)]
+/// A hardware key, a modifier change, or the window losing focus.
+/// `text` is the platform string already paired with the key.
+#[derive(Clone, Debug)]
 pub enum PhysicalInput {
-    Key { key: PhysicalKeyCode, mods: Mods, pressed: bool, repeat: bool },
+    Key {
+        key: PhysicalKeyCode,
+        mods: Mods,
+        pressed: bool,
+        repeat: bool,
+        /// Platform text already paired with this physical key.
+        /// `None` when the key produces no text.
+        text: Option<String>,
+        /// Modifiers the platform spent producing `text`.
+        consumed_mods: Mods,
+    },
     Modifiers(Mods),
     FocusLost,
+}
+
+impl Drop for PhysicalInput {
+    fn drop(&mut self) {
+        if let PhysicalInput::Key { text: Some(text), .. } = self {
+            text.zeroize();
+        }
+    }
 }
 
 pub(crate) type Handler = std::rc::Rc<dyn Fn(crate::states::States<'_>, &PhysicalInput, &mut crate::Tx) -> bool>;

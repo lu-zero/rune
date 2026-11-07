@@ -38,7 +38,7 @@ impl<S: 'static> Host<S> {
         let mut redraw = false;
         for pressed in changes {
             redraw |= self.rt.physical_with_fallback(crate::PhysicalInput::Key {
-                key: winit::keyboard::KeyCode::Fn, mods: map_mods(self.mods), pressed, repeat: false,
+                key: winit::keyboard::KeyCode::Fn, mods: map_mods(self.mods), pressed, repeat: false, text: None, consumed_mods: Default::default()
             }, None);
         }
         if redraw { l.request_redraw(); }
@@ -396,8 +396,11 @@ impl<S: 'static> Host<S> {
                         .map(|_| crate::runtime::Unhandled::WindowMenu)
                 });
                 if let winit::keyboard::PhysicalKey::Code(key) = event.physical_key {
+                    let mods = map_mods(self.mods);
                     redraw = rt.physical_then(crate::PhysicalInput::Key {
-                        key, mods: map_mods(self.mods), pressed, repeat: event.repeat,
+                        key, mods, pressed, repeat: event.repeat,
+                        text: platform_text(&event),
+                        consumed_mods: consumed_mods(&event, mods),
                     }, logical, key_base(&event), unhandled);
                 } else if let Some(ev) = logical {
                     if !pressed { redraw = rt.key_up(ev); }

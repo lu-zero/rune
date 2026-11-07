@@ -328,9 +328,9 @@ mod tests {
         let mut rt = Runtime::new(State::default(), view, (100.0, 100.0), Env::new(true, 1.0));
         rt.frame(0.0);
         assert!(rt.wants_key_up());
-        let release = PhysicalInput::Key { key: PhysicalKeyCode::Space, mods: Mods::default(), pressed: false, repeat: false };
+        let release = PhysicalInput::Key { key: PhysicalKeyCode::Space, mods: Mods::default(), pressed: false, repeat: false, text: None, consumed_mods: Default::default() };
         let space = KeyEvent { key: crate::Key::Text(" ".into()), mods: Mods::default() };
-        assert!(rt.physical_with_fallback(release, Some(space.clone())));
+        assert!(rt.physical_with_fallback(release.clone(), Some(space.clone())));
         rt.frame(0.0);
         assert_eq!(rt.state.ups, [space.key.clone()]);
 
@@ -339,7 +339,7 @@ mod tests {
         rt.pointer_down(x, y);
         rt.pointer_up(x, y);
         rt.state.swallow = true;
-        rt.physical_with_fallback(release, Some(space.clone()));
+        rt.physical_with_fallback(release.clone(), Some(space.clone()));
         rt.frame(0.0);
         assert_eq!(rt.state.ups.len(), 1);
         rt.state.swallow = false;

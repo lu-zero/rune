@@ -96,7 +96,7 @@ impl ModifierKeys {
     /// releases them all.
     fn changes(&self, event: &PhysicalInput, altgr_clears: bool) -> (u16, u16) {
         if !self.enabled { return (0, 0); }
-        match *event {
+        match event.clone() {
             PhysicalInput::Key { key, pressed, repeat, .. } => match modifier(key) {
                 Some(m) if !repeat && (self.held & bit(m) != 0) != pressed => if pressed { (bit(m), 0) } else { (0, bit(m)) },
                 _ => (0, 0),
@@ -124,7 +124,7 @@ impl ModifierKeys {
     /// modifier is down, takes the key-up.
     fn apply(&mut self, event: &PhysicalInput, consumed: bool, altgr_clears: bool) -> Vec<KeyEvent> {
         let (pressed, released) = self.changes(event, altgr_clears);
-        let mods = match *event {
+        let mods = match event.clone() {
             PhysicalInput::Key { mods, .. } => mods,
             PhysicalInput::Modifiers(now) => { self.last = now; now }
             PhysicalInput::FocusLost => { self.last = Mods::default(); Mods::default() }
@@ -160,7 +160,7 @@ impl<S: 'static> Runtime<S> {
     /// modifier keys it presses and releases. True if a handler took one.
     pub(super) fn modifier_dispatch(&mut self, event: &PhysicalInput, consumed: bool, tx: &mut Tx, live: &mut Option<bool>) -> bool {
         let mut ran = false;
-        let code = match *event { PhysicalInput::Key { key, .. } => Some(key), _ => None };
+        let code = match event.clone() { PhysicalInput::Key { key, .. } => Some(key), _ => None };
         for ev in self.modifier_keys.apply(event, consumed, ALTGR_CLEARS_FLAGS) {
             let mut one = self.transaction();
             one.physical_key = code;
@@ -214,7 +214,7 @@ mod tests {
             .child(el().key("recorder").size(100.0, 40.0).focusable(true)
                 .on_physical_input(|s: &mut Keys, ev, _| {
                     if matches!(ev, PhysicalInput::FocusLost) { s.focus_lost += 1; }
-                    if s.recording { s.recorded.push(*ev); }
+                    if s.recording { s.recorded.push(ev.clone()); }
                     s.recording
                 }))
     }
@@ -235,7 +235,7 @@ mod tests {
     }
     /// A physical modifier key, as hosts send it: `mods` from before the change, like macOS.
     fn modifier(rt: &mut Runtime<Keys>, code: Code, pressed: bool, mods: Mods) -> bool {
-        let redraw = rt.physical_with_fallback(PhysicalInput::Key { key: code, mods, pressed, repeat: false }, None);
+        let redraw = rt.physical_with_fallback(PhysicalInput::Key { key: code, mods, pressed, repeat: false, text: None, consumed_mods: Default::default() }, None);
         rt.frame(0.0);
         redraw
     }
@@ -285,7 +285,7 @@ mod tests {
         modifier(&mut rt, code, true, Mods::default());
         assert_eq!(rt.state.app[0].mods.cmd, true);
         assert_eq!(rt.state.chords, 0, "the modifier alone is no chord");
-        rt.physical_with_fallback(PhysicalInput::Key { key: Code::KeyK, mods: cmd, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: Code::KeyK, mods: cmd, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Command('k'), mods: cmd }));
         rt.frame(0.0);
         assert_eq!(rt.state.app[1], KeyEvent { key: Key::Command('k'), mods: cmd });
@@ -293,7 +293,7 @@ mod tests {
         // Shift held types capitals in a field as before.
         click(&mut rt, "field");
         modifier(&mut rt, Code::ShiftRight, true, Mods::default());
-        rt.physical_with_fallback(PhysicalInput::Key { key: Code::KeyA, mods: SHIFT, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: Code::KeyA, mods: SHIFT, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Text("A".into()), mods: SHIFT }));
         rt.frame(0.0);
         assert_eq!(rt.state.edit.text, "A");
@@ -306,7 +306,7 @@ mod tests {
         rt.state.app.clear();
         for code in [Code::SuperLeft, Code::ControlLeft, Code::AltLeft, Code::ShiftLeft, Code::Fn] {
             modifier(&mut rt, code, true, Mods::default());
-            rt.physical_with_fallback(PhysicalInput::Key { key: code, mods: Mods::default(), pressed: true, repeat: true }, None);
+            rt.physical_with_fallback(PhysicalInput::Key { key: code, mods: Mods::default(), pressed: true, repeat: true, text: None, consumed_mods: Default::default() }, None);
             rt.frame(0.0);
             modifier(&mut rt, code, false, Mods::default());
         }
@@ -387,7 +387,7 @@ mod tests {
         // Recording ⌥K: the recorder takes every key, and on_key hears none of it.
         modifier(&mut rt, Code::AltLeft, true, Mods::default());
         flags(&mut rt, ALT);
-        rt.physical_with_fallback(PhysicalInput::Key { key: Code::KeyK, mods: ALT, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: Code::KeyK, mods: ALT, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Text("k".into()), mods: ALT }));
         rt.frame(0.0);
         rt.state.recording = false;
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn windows_altgr_clearing_control_and_alt_is_no_release() {
-        let key = |key, pressed, mods| PhysicalInput::Key { key, mods, pressed, repeat: false };
+        let key = |key, pressed, mods| PhysicalInput::Key { key, mods, pressed, repeat: false, text: None, consumed_mods: Default::default() };
         let ctrl = Mods { ctrl: true, ..Mods::default() };
         let sent = |out: Vec<KeyEvent>| modifiers(&out);
         for altgr_clears in [true, false] {

@@ -50,7 +50,7 @@ mod platform_sync;
 use platform_sync::sync_platform;
 mod shell_requests;
 mod keys;
-pub(crate) use keys::{key_base, map_key_event, map_mods};
+pub(crate) use keys::{consumed_mods, key_base, map_key_event, map_mods, platform_text};
 mod any_host;
 mod app_events;
 mod event_loop;

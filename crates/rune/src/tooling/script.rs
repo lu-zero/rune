@@ -42,7 +42,7 @@ pub(crate) fn parse_script(list: Value) -> Vec<Ev> {
             let repeat = e["repeat"].as_bool().unwrap_or(false);
             for pressed in [true, false] {
                 out.push(Ev { t, kind: Kind::Physical(crate::PhysicalInput::Key {
-                    key: chord.physical_key(), mods: chord.modifiers(), pressed, repeat: repeat && pressed,
+                    key: chord.physical_key(), mods: chord.modifiers(), pressed, repeat: repeat && pressed, text: None, consumed_mods: Default::default()
                 }), pos: Pos::Rel(0.0, 0.0) });
             }
             // Then the modifiers come up, as on a real keyboard, so nothing stays held.
@@ -178,7 +178,7 @@ pub(crate) fn parse_script(list: Value) -> Vec<Ev> {
                 if let Some(code) = e["code"].as_str() {
                     let code = code.parse::<crate::Shortcut>().unwrap_or_else(|e| die(&e.to_string())).physical_key();
                     let base = script_key_base(&e, name, mods);
-                    let press = |pressed| crate::PhysicalInput::Key { key: code, mods, pressed, repeat: repeat && pressed };
+                    let press = |pressed| crate::PhysicalInput::Key { key: code, mods, pressed, repeat: repeat && pressed, text: None, consumed_mods: Default::default() };
                     if ty == "key-up" {
                         out.push(Ev { t, kind: Kind::PhysicalKey(press(false), KeyEvent { key, mods }, base), pos: Pos::Rel(0.0, 0.0) });
                     } else {

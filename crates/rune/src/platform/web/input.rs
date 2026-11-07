@@ -247,8 +247,12 @@ impl<S: 'static> Running<S> {
                 }
                 activate = logical.as_ref().is_some_and(|k| k.key == crate::Key::Tab);
                 if let winit::keyboard::PhysicalKey::Code(key) = event.physical_key {
-                    self.rt.physical_with_fallback(crate::PhysicalInput::Key { key, mods: modifiers(self.input.mods),
-                        pressed: event.state == ElementState::Pressed, repeat: event.repeat }, logical);
+                    let mods = modifiers(self.input.mods);
+                    self.rt.physical_with_fallback(crate::PhysicalInput::Key {
+                        key, mods, pressed: event.state == ElementState::Pressed, repeat: event.repeat,
+                        text: crate::window::platform_text(&event),
+                        consumed_mods: crate::window::consumed_mods(&event, mods),
+                    }, logical);
                 } else if let Some(key) = logical {
                     if pressed { self.rt.key(key); } else { self.rt.key_up(key); }
                 }

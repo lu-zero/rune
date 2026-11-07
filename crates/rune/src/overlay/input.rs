@@ -164,7 +164,7 @@ impl<T: 'static> Overlay<T> {
         if !self.visible || self.options.keys != KeyPolicy::OnDemand { return; }
         for pressed in changes {
             self.dirty |= self.rt.physical_with_fallback(crate::PhysicalInput::Key {
-                key: winit::keyboard::KeyCode::Fn, mods: crate::window::map_mods(self.mods), pressed, repeat: false,
+                key: winit::keyboard::KeyCode::Fn, mods: crate::window::map_mods(self.mods), pressed, repeat: false, text: None, consumed_mods: Default::default()
             }, None);
         }
     }

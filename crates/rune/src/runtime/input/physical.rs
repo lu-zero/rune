@@ -1,6 +1,15 @@
 use super::*;
 use crate::{PhysicalInput, PhysicalKeyCode};
 
+/// Copies a paired `Key::Text` into `text` when the host left that field empty.
+/// Does not guess `consumed_mods`.
+fn pair_platform_text(event: &mut PhysicalInput, key: Option<&KeyEvent>) {
+    let PhysicalInput::Key { text, .. } = event else { return };
+    if text.is_some() { return; }
+    let Some(crate::Key::Text(paired)) = key.map(|ev| &ev.key) else { return };
+    *text = Some(paired.clone());
+}
+
 pub(super) struct Fallback { key: KeyEvent, base: Option<char>, unhandled: Option<Unhandled> }
 
 /// What a window does with a logical key no handler took: close or minimize as its title-bar
@@ -62,7 +71,8 @@ impl<S: 'static> Runtime<S> {
     }
     /// `physical_with_fallback`, with the key's unmodified character (`Tx::key_base`), and
     /// `unhandled` happens when no handler takes the logical key.
-    pub(crate) fn physical_then(&mut self, event: PhysicalInput, key: Option<KeyEvent>, base: Option<char>, unhandled: Option<Unhandled>) -> bool {
+    pub(crate) fn physical_then(&mut self, mut event: PhysicalInput, key: Option<KeyEvent>, base: Option<char>, unhandled: Option<Unhandled>) -> bool {
+        pair_platform_text(&mut event, key.as_ref());
         if self.cancel_drag_key(&event) { return true; }
         if key.is_none() && matches!(event, PhysicalInput::Modifiers(_) | PhysicalInput::Key { pressed: false, .. }) {
             return self.physical_observation(event);
@@ -246,9 +256,9 @@ mod tests {
         rt.frame(0.0);
         let (x, y) = rt.find("recorder").unwrap(); rt.pointer_down(x, y); rt.pointer_up(x, y);
         let mods = Mods { cmd: true, ..Mods::default() };
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::KeyV, mods, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::KeyV, mods, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Command('v'), mods }));
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Escape, mods: Mods::default(), pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Escape, mods: Mods::default(), pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Escape, mods: Mods::default() }));
         rt.frame(0.0);
         assert_eq!((rt.state.physical, rt.state.logical, rt.state.dismissed), (2, 0, 0));
@@ -256,14 +266,14 @@ mod tests {
         assert!(rt.paste_request.is_none(), "capture must not read the clipboard");
         rt.state.capture = false;
         let (x, y) = rt.find("edit").unwrap(); rt.pointer_down(x, y); rt.pointer_up(x, y);
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::KeyV, mods, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::KeyV, mods, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Command('v'), mods }));
         rt.frame(0.0);
         let target = rt.paste_request.take().expect("paste requested");
         rt.paste_result(target, crate::ClipboardContent::new("paste"));
         rt.frame(0.0);
         assert_eq!(rt.state.edit.text, "paste");
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Escape, mods: Mods::default(), pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Escape, mods: Mods::default(), pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Escape, mods: Mods::default() }));
         rt.frame(0.0);
         assert_eq!(rt.state.dismissed, 1);
@@ -274,26 +284,26 @@ mod tests {
         let mut rt = Runtime::new(State::default(), view, (300.0, 200.0), Env::new(true, 1.0));
         rt.frame(0.0);
         let modifiers = PhysicalInput::Modifiers(Mods { shift: true, ..Mods::default() });
-        let release = PhysicalInput::Key { key: PhysicalKeyCode::ShiftLeft, mods: Mods::default(), pressed: false, repeat: false };
-        for event in [modifiers, release] {
+        let release = PhysicalInput::Key { key: PhysicalKeyCode::ShiftLeft, mods: Mods::default(), pressed: false, repeat: false, text: None, consumed_mods: Default::default() };
+        for event in [modifiers.clone(), release.clone()] {
             assert!(!rt.physical_with_fallback(event, None));
             assert!(rt.queue.is_empty() && !rt.dirty, "unused input must not schedule work");
         }
         click(&mut rt, "recorder");
         // The click already requested a frame. Do not deliver modifiers to the old
         // focus or request another frame before that queued click starts capture.
-        assert!(!rt.physical_with_fallback(modifiers, None));
+        assert!(!rt.physical_with_fallback(modifiers.clone(), None));
         assert_eq!(rt.state.physical, 0);
         rt.frame(0.0);
         assert_eq!(rt.state.physical, 1);
-        for event in [modifiers, release] {
+        for event in [modifiers.clone(), release.clone()] {
             assert!(rt.physical_with_fallback(event, None));
             assert!(rt.dirty, "consumption must commit the handler's state changes");
             rt.frame(0.0);
         }
         assert_eq!(rt.state.physical, 3);
         rt.state.capture = false;
-        assert!(!rt.physical_with_fallback(release, None), "a declining handler needs no frame");
+        assert!(!rt.physical_with_fallback(release.clone(), None), "a declining handler needs no frame");
         rt.state.capture = true;
         click(&mut rt, "edit");
         assert!(!rt.physical_with_fallback(modifiers, None));
@@ -340,7 +350,7 @@ mod tests {
     }
     fn key<S: 'static>(rt: &mut Runtime<S>, physical: PhysicalKeyCode, key: Key) {
         let mods = Mods { cmd: matches!(key, Key::Command(_)), ..Mods::default() };
-        rt.physical_with_fallback(PhysicalInput::Key { key: physical, mods, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: physical, mods, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key, mods }));
     }
     fn fields_runtime(secure: bool) -> Runtime<Fields> {
@@ -420,7 +430,7 @@ mod tests {
     }
     fn press<S: 'static>(rt: &mut Runtime<S>, physical: PhysicalKeyCode, key: Key, repeat: bool) {
         let mods = Mods::default();
-        rt.physical_with_fallback(PhysicalInput::Key { key: physical, mods, pressed: true, repeat }, Some(KeyEvent { key, mods }));
+        rt.physical_with_fallback(PhysicalInput::Key { key: physical, mods, pressed: true, repeat, text: None, consumed_mods: Default::default() }, Some(KeyEvent { key, mods }));
         rt.frame(0.0);
     }
 
@@ -485,9 +495,9 @@ mod tests {
         // ⌘⇧7 on a German layout types '/', on a US one '&'; both are the 7 key (press, repeat, key-up).
         let mods = Mods { cmd: true, shift: true, ..Mods::default() };
         for (c, repeat) in [('/', false), ('&', true)] {
-            rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Digit7, mods, pressed: true, repeat },
+            rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Digit7, mods, pressed: true, repeat, text: None, consumed_mods: Default::default() },
                 Some(KeyEvent { key: Key::Command(c), mods }));
-            rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Digit7, mods, pressed: false, repeat: false },
+            rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Digit7, mods, pressed: false, repeat: false, text: None, consumed_mods: Default::default() },
                 Some(KeyEvent { key: Key::Command(c), mods }));
             rt.frame(0.0);
         }
@@ -498,7 +508,7 @@ mod tests {
         // A logical key with no physical origin has none, and non-key callbacks (`on_input_change`)
         // never inherit the key handler's physical key.
         rt.key(KeyEvent { key: Key::Command('&'), mods });
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::KeyA, mods: Mods::default(), pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::KeyA, mods: Mods::default(), pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Text("a".into()), mods: Mods::default() }));
         rt.frame(0.0);
         assert_eq!(rt.state.app.last(), Some(&(Key::Command('&'), None, false)));
@@ -525,7 +535,7 @@ mod tests {
     }
 
     fn release<S: 'static>(rt: &mut Runtime<S>, physical: PhysicalKeyCode) {
-        rt.physical_with_fallback(PhysicalInput::Key { key: physical, mods: Mods::default(), pressed: false, repeat: false }, None);
+        rt.physical_with_fallback(PhysicalInput::Key { key: physical, mods: Mods::default(), pressed: false, repeat: false, text: None, consumed_mods: Default::default() }, None);
         rt.frame(0.0);
     }
 
@@ -623,9 +633,9 @@ mod tests {
     fn a_repeat_queued_in_the_same_frame_sees_the_focus_its_press_moved() {
         let mut rt = opener_focused_on(1);
         let mods = Mods::default();
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Space, mods, pressed: true, repeat: false },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Space, mods, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Text(" ".into()), mods }));
-        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Space, mods, pressed: true, repeat: true },
+        rt.physical_with_fallback(PhysicalInput::Key { key: PhysicalKeyCode::Space, mods, pressed: true, repeat: true, text: None, consumed_mods: Default::default() },
             Some(KeyEvent { key: Key::Text(" ".into()), mods }));
         rt.frame(0.0);
         assert_eq!(focused_key(&rt).as_deref(), Some("sink"));
@@ -643,7 +653,7 @@ mod tests {
         let item = { let ran = ran.clone(); Unhandled::Menu(Arc::new(move || { ran.fetch_add(1, Ordering::Relaxed); })) };
         let mods = Mods { cmd: true, ..Mods::default() };
         let chord = |rt: &mut Runtime<Fields>, code, c, repeat| {
-            rt.physical_then(PhysicalInput::Key { key: code, mods, pressed: true, repeat },
+            rt.physical_then(PhysicalInput::Key { key: code, mods, pressed: true, repeat, text: None, consumed_mods: Default::default() },
                 Some(KeyEvent { key: Key::Command(c), mods }), None, Some(item.clone()));
             rt.frame(0.0);
             ran.load(Ordering::Relaxed)

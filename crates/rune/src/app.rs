@@ -1122,7 +1122,7 @@ mod tests {
         use crate::{Key, KeyEvent, Mods, PhysicalInput, PhysicalKeyCode as Code};
         let cmd = Mods { cmd: true, ..Mods::default() };
         let press = |rt: &mut Runtime<u32>, code, c, then| {
-            rt.physical_then(PhysicalInput::Key { key: code, mods: cmd, pressed: true, repeat: false },
+            rt.physical_then(PhysicalInput::Key { key: code, mods: cmd, pressed: true, repeat: false, text: None, consumed_mods: Default::default() },
                 Some(KeyEvent { key: Key::Command(c), mods: cmd }), None, Some(then));
             rt.frame(0.0);
         };
