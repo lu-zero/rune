@@ -74,7 +74,9 @@ pub(crate) fn parse_script(list: Value) -> Vec<Ev> {
                 }
             }
             let pressed = e["down"].as_bool().unwrap_or(true);
-            out.push(Ev { t, kind: Kind::Physical(crate::PhysicalInput::Key { key, mods, pressed, repeat: false }), pos: Pos::Rel(0.0, 0.0) });
+            out.push(Ev { t, kind: Kind::Physical(crate::PhysicalInput::Key {
+                key, mods, pressed, repeat: false, text: None, consumed_mods: Default::default(),
+            }), pos: Pos::Rel(0.0, 0.0) });
             out.push(Ev { t, kind: Kind::Physical(crate::PhysicalInput::Modifiers(mods)), pos: Pos::Rel(0.0, 0.0) });
             continue;
         }

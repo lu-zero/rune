@@ -166,7 +166,10 @@ impl<S: 'static> Runtime<S> {
     /// Ctrl+Left Shift and Ctrl+Right Shift: every physical key steps the chord (`edit::direction_keys`),
     /// and its release sets the focused field's direction. Any other key disarms it. True if it set one.
     pub(super) fn direction_chord(&mut self, event: &PhysicalInput, tx: &mut Tx) -> bool {
-        let PhysicalInput::Key { key, mods, pressed, repeat: false } = *event else { return false };
+        let (key, mods, pressed) = match event {
+            PhysicalInput::Key { key, mods, pressed, repeat: false, .. } => (*key, *mods, *pressed),
+            _ => return false,
+        };
         let Some(m) = modifier(key) else {
             if pressed { self.modifier_keys.chord = crate::edit::DirChord::Idle; }
             return false;

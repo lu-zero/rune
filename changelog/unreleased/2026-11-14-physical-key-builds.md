@@ -1,0 +1,1 @@
+- **A direction chord copies the key.** The key event carries platform text and is not `Copy`, so the chord reads the key, the modifiers, and the press and leaves the text in place. A scripted modifier press fills `text` and `consumed_mods`.
