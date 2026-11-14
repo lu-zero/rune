@@ -6,16 +6,16 @@
 //! close it, and focus goes back to the trigger, without a ring when the pointer opened it, as
 //! Desktop's menu machine has it (`ui/src/navigation/menu/machine.ts`).
 
-use rune::{El, Icon, TextStyle, Tx, col, el, icon, row, text};
+use rune::{col, el, icon, row, text, El, Icon, TextStyle, Tx};
 
-use crate::menu::{Modal, dismissal, mount_dismiss};
+use crate::menu::{dismissal, mount_dismiss, Modal};
 use crate::overlay::Placement;
 use crate::popover::{anchored, fit_scroll_bar};
 
 /// The listbox's tallest: its 4-point padding, six 30-point rows (28 tall, 2 apart), and most
 /// of the seventh, whose label shows fading under the edge.
 const LISTBOX_MAX_HEIGHT: f32 = 4.0 + 6.0 * 30.0 + 22.0;
-use crate::{Kit, State, over, press_over, shadows};
+use crate::{over, press_over, shadows, Kit, State};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum SelectAppearance {
@@ -34,6 +34,10 @@ pub struct Select {
     options: Vec<(Option<String>, String)>,
     details: Vec<Option<String>>,
     width: f32,
+    /// The field fills its parent instead of `width`.
+    fill: bool,
+    /// The listbox width. `None` sizes it to the labels, between 160 and 368.
+    menu_width: Option<f32>,
     current: Option<String>,
     placeholder: String,
     name: Option<String>,
@@ -55,6 +59,8 @@ impl Select {
             options: options.iter().map(|o| (None, o.as_ref().to_owned())).collect(),
             details: Vec::new(),
             width: 280.0,
+            fill: false,
+            menu_width: None,
             current: None,
             placeholder: String::new(),
             name: None,
@@ -83,6 +89,16 @@ impl Select {
     /// The field trigger's width in points (default 280).
     pub fn width(mut self, w: f32) -> Self {
         self.width = w;
+        self
+    }
+    /// The field fills its parent instead of [`Self::width`].
+    pub fn fill(mut self) -> Self {
+        self.fill = true;
+        self
+    }
+    /// The listbox's width, in place of sizing it to the labels.
+    pub fn menu_width(mut self, w: f32) -> Self {
+        self.menu_width = Some(w);
         self
     }
     pub fn current(mut self, c: Option<&str>) -> Self {
@@ -189,7 +205,8 @@ impl Select {
             let mut item = row()
                 .key(format!("option{i}"))
                 .role("option")
-                .focusable(true).focus_selected(selected)
+                .focusable(true)
+                .focus_selected(selected)
                 .label(o.clone())
                 .position_in_set(i + 1, count)
                 .h(28.0)
@@ -200,7 +217,14 @@ impl Select {
                 .radius(4.0)
                 .mt(if after_item { 2.0 } else { 0.0 })
                 .child(
-                    text(o.clone()).key("label").font(k.ty.ui_compact).color(c.text_base).grow(1.0).shrink().truncate().a11y_hidden(),
+                    text(o.clone())
+                        .key("label")
+                        .font(k.ty.ui_compact)
+                        .color(c.text_base)
+                        .grow(1.0)
+                        .shrink()
+                        .truncate()
+                        .a11y_hidden(),
                 )
                 .child(el().key("indicator").size(16.0, 16.0).center().a11y_hidden().child(
                     icon(k.glyph.check_small, 14.0).color(c.icon_base).opacity(if selected { 1.0 } else { 0.0 }),
@@ -219,19 +243,30 @@ impl Select {
             list = list.child(item);
             after_item = true;
         }
+        let mut surface = col()
+            .key(format!("{}-content", self.key))
+            // Modal, so a reader hears a dialog: it's named as the select is.
+            .label(self.name.clone().unwrap_or_else(|| self.placeholder.clone()))
+            .focus_return(&anchor_key)
+            .radius(6.0)
+            .fill(c.layer_01);
+        surface = match self.menu_width {
+            Some(w) => surface.w(w),
+            None => surface.min_w(160.0).max_w(368.0),
+        };
         let mut content = shadows(
             k,
-            col()
-                .key(format!("{}-content", self.key))
-                // Modal, so a reader hears a dialog: it's named as the select is.
-                .label(self.name.clone().unwrap_or_else(|| self.placeholder.clone()))
-                .focus_return(&anchor_key)
-                .min_w(160.0)
-                .max_w(368.0)
-                .radius(6.0)
-                .fill(c.layer_01)
-                .child(col().key("listbox").role("listbox").label(self.name.clone().unwrap_or_else(|| self.placeholder.clone()))
-                    .focus_group().max_h(LISTBOX_MAX_HEIGHT).min_h(0.0).shrink().child(fit_scroll_bar(k, &self.key, list))),
+            surface.child(
+                col()
+                    .key("listbox")
+                    .role("listbox")
+                    .label(self.name.clone().unwrap_or_else(|| self.placeholder.clone()))
+                    .focus_group()
+                    .max_h(LISTBOX_MAX_HEIGHT)
+                    .min_h(0.0)
+                    .shrink()
+                    .child(fit_scroll_bar(k, &self.key, list)),
+            ),
             &k.elevation.floating,
         );
         if let Some(modal) = modal {
@@ -255,8 +290,13 @@ impl Select {
         // Named for what it chooses, its value the chosen option; the text and chevron inside
         // show the same.
         let name = self.name.clone().unwrap_or_else(|| self.placeholder.clone());
-        let mut trigger = row().key(anchor_key.clone()).role("combobox").label(name)
-            .expanded(self.open).disabled(disabled).center_y()
+        let mut trigger = row()
+            .key(anchor_key.clone())
+            .role("combobox")
+            .label(name)
+            .expanded(self.open)
+            .disabled(disabled)
+            .center_y()
             .focusable(!disabled);
         if let Some(v) = &self.current {
             trigger = trigger.a11y_value(v.clone());
@@ -286,9 +326,9 @@ impl Select {
                 t
             }
             SelectAppearance::Field => {
-                let mut t = trigger
-                    .w(self.width)
-                    .h(28.0)
+                let mut t = trigger.h(28.0);
+                t = if self.fill { t.w_full() } else { t.w(self.width) };
+                t = t
                     .pr(6.0)
                     .gap(8.0)
                     .radius(k.radius.md)
@@ -303,7 +343,10 @@ impl Select {
                             .a11y_hidden(),
                     )
                     .child(
-                        el().size(20.0, 20.0).center().child(icon(chevron, 16.0).key("chevron").color(c.icon_muted)).a11y_hidden(),
+                        el().size(20.0, 20.0)
+                            .center()
+                            .child(icon(chevron, 16.0).key("chevron").color(c.icon_muted))
+                            .a11y_hidden(),
                     );
                 // select.css:34-35, 100-108: a 1 point ring just inside the box, in place of the
                 // shadow, while focus is in the closed field (`:focus-within`) or it's invalid.
@@ -314,7 +357,11 @@ impl Select {
                 } else {
                     t = shadows(k, t, k.elevation.input());
                     // select.css:73,100-103: focus inside drops the shadow and the hover tint.
-                    t = if self.open { t.no_focus_ring() } else { t.focus_within_ring(1.0, -1.0, c.border_focus).focus_within_flat() };
+                    t = if self.open {
+                        t.no_focus_ring()
+                    } else {
+                        t.focus_within_ring(1.0, -1.0, c.border_focus).focus_within_flat()
+                    };
                     if self.state == State::Rest && !self.open {
                         t = t.hover(c.hover);
                     }

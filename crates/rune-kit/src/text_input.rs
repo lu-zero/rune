@@ -1,9 +1,9 @@
 //! TextInput and Textarea (`@opencode/ui` forms/text-input, forms/textarea), and the older
 //! TextField (`components/text-field`).
 
-use rune::{Color, El, Icon, RichStyle, Span, TextEdit, TextStyle, Tx, col, el, icon, row, text, text_input};
+use rune::{col, el, icon, row, text, text_input, Color, El, Icon, RichStyle, Span, TextEdit, TextStyle, Tx};
 
-use crate::{Acts, Kit, State, over, shadows};
+use crate::{over, shadows, Acts, Kit, State};
 
 fn kit_rich_style(k: &Kit) -> RichStyle {
     RichStyle {
@@ -41,7 +41,6 @@ fn shell(k: &Kit, e: El, state: State, invalid: bool, focused: bool) -> El {
     }
     e
 }
-
 
 /// The rich-text builders every field forwards to its inner text element.
 macro_rules! rich_forwarders {
@@ -304,6 +303,21 @@ impl TextInput {
         self.edits.submit(f);
         self
     }
+    /// Runs when this field loses focus: Tab, a click elsewhere, or the window
+    /// deactivating. Return is [`Self::on_submit`], not this. FocusLost is taken
+    /// so the frame commits; a key is left for the editor.
+    pub fn on_blur<S: 'static>(mut self, f: impl Fn(&mut S, &mut Tx) + 'static) -> Self {
+        self.edits.handlers.push(Box::new(move |e: El| {
+            e.on_physical_input(move |s: &mut S, event, tx| {
+                if !matches!(event, rune::PhysicalInput::FocusLost) {
+                    return false;
+                }
+                f(s, tx);
+                true
+            })
+        }));
+        self
+    }
     /// The trailing copy or clear button's press.
     pub fn on_action<S: 'static>(mut self, f: impl Fn(&mut S, &mut Tx) + 'static) -> Self {
         self.copy_acts.press_tx(f);
@@ -339,18 +353,19 @@ impl TextInput {
         // there, as an `input` cuts its own text, rather than running on to the border.
         let mut value = row().key("value").grow(1.0).shrink().min_w(0.0).gap(6.0).center_y().clip_rounded(0.0);
         if let Some(i) = self.leading {
-            value = value.child(el().key("leading").pl(8.0).center().child(icon(i, self.leading_size).color(c.icon_muted)).a11y_hidden());
+            value = value.child(
+                el().key("leading")
+                    .pl(8.0)
+                    .center()
+                    .child(icon(i, self.leading_size).color(c.icon_muted))
+                    .a11y_hidden(),
+            );
         } else {
             value = value.child(el().w(2.0));
         }
         value = value.child(field);
         // The editor inside carries the name; the box only routes presses to it.
-        let mut e = row()
-            .role("textbox")
-            .h(height)
-            .pr(8.0)
-            .gap(8.0)
-            .child(value);
+        let mut e = row().role("textbox").h(height).pr(8.0).gap(8.0).child(value);
         e = match self.width {
             Some(w) => e.w(w),
             None => e.w_full(),
@@ -647,7 +662,13 @@ impl TextField {
             .caret(c.text_strong, k.selection());
         let field = if self.multiline { field } else { field.single_line() };
         // The error describes the editor; the label above names it.
-        let field = name_field(field, Some(self.label.as_str()), &self.placeholder, self.error.as_deref(), self.state == State::Disabled);
+        let field = name_field(
+            field,
+            Some(self.label.as_str()),
+            &self.placeholder,
+            self.error.as_deref(),
+            self.state == State::Disabled,
+        );
         let field = self.edits.apply(field, self.state == State::Disabled);
         let mut wrapper = row()
             .key("wrapper")
@@ -683,14 +704,25 @@ impl TextField {
         }
         let mut root = col().role("textbox").gap(8.0).w_full();
         if !self.hide_label {
-            root = root.child(text(self.label.clone()).key("label").font(k.ty.text_xsmall_medium).color(c.text_weak).a11y_hidden());
+            root = root.child(
+                text(self.label.clone()).key("label").font(k.ty.text_xsmall_medium).color(c.text_weak).a11y_hidden(),
+            );
         }
         root = root.child(wrapper);
         if let Some(e) = &self.error {
             // Announced as it appears, and read again as the field's description.
-            root = root.child(text(e.clone()).key("error").font(k.ty.text_xsmall_medium).color(c.danger.fg)
-                .live_region(rune::LiveRegion::Assertive));
+            root = root.child(
+                text(e.clone())
+                    .key("error")
+                    .font(k.ty.text_xsmall_medium)
+                    .color(c.danger.fg)
+                    .live_region(rune::LiveRegion::Assertive),
+            );
         }
-        if self.state == State::Disabled { root.layer_opacity(0.5) } else { root }
+        if self.state == State::Disabled {
+            root.layer_opacity(0.5)
+        } else {
+            root
+        }
     }
 }

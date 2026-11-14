@@ -1,0 +1,1 @@
+- **A text field can run when it blurs.** `TextInput::on_blur` runs when focus leaves the field: Tab, a click elsewhere, or the window deactivating. Return stays `on_submit`.
