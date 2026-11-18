@@ -65,7 +65,7 @@ impl<S: 'static> Runtime<S> {
         let sel_ranges = self.selection_ranges();
         let mark_ranges = self.mark_ranges();
         self.ime_area = None;
-        self.ime_option_as_alt = false;
+        self.ime_option_as_alt = crate::OptionAsAlt::None;
         let now = self.t;
         let vp = [0.0, 0.0, self.viewport.0 * s, self.viewport.1 * s];
         let mut glyph_count = 0usize;

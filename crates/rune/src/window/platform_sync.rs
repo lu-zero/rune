@@ -24,7 +24,13 @@ pub(super) fn sync_platform<S: 'static>(l: &mut Win, rt: &mut Runtime<S>, secure
     #[cfg(target_os = "macos")]
     {
         use winit::platform::macos::{OptionAsAlt, WindowExtMacOS};
-        let want = if ime_allowed && rt.ime_option_as_alt { OptionAsAlt::Both } else { OptionAsAlt::None };
+        let want = match rt.ime_option_as_alt {
+            _ if !ime_allowed => OptionAsAlt::None,
+            crate::OptionAsAlt::None => OptionAsAlt::None,
+            crate::OptionAsAlt::Left => OptionAsAlt::OnlyLeft,
+            crate::OptionAsAlt::Right => OptionAsAlt::OnlyRight,
+            crate::OptionAsAlt::Both => OptionAsAlt::Both,
+        };
         if l.window.option_as_alt() != want {
             l.window.set_option_as_alt(want);
         }

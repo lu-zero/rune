@@ -27,7 +27,7 @@ pub(crate) struct ElCold {
     /// `El::animated_changes`: an ancestor's `El::instant_changes` stops here.
     pub(crate) animated_changes: bool,
     /// `El::ime_option_as_alt`.
-    pub(crate) option_as_alt: bool,
+    pub(crate) option_as_alt: crate::OptionAsAlt,
     pub(crate) transition: Option<Box<Transition>>,
     pub(crate) matched: Option<Rc<str>>,
     pub(crate) scroll: Option<ScrollSpec>,
@@ -77,7 +77,7 @@ impl Empty for ElCold {
         opacity_motion: None,
         lead: None,
         animated_changes: false,
-        option_as_alt: false,
+        option_as_alt: crate::OptionAsAlt::None,
         transition: None,
         matched: None,
         scroll: None,

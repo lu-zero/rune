@@ -143,7 +143,7 @@ pub(crate) struct Node {
     pub(super) window_drag: crate::el::WindowDrag,
     pub(super) ime_cursor: bool,
     /// `El::ime_option_as_alt`.
-    pub(super) ime_option_as_alt: bool,
+    pub(super) ime_option_as_alt: crate::OptionAsAlt,
     /// Placeholder left in `self.nodes` after `try_reuse_memo` moves a node into the new pass.
     pub(super) moved_stub: bool,
     /// A new one each time it's built from its element; a node a region keeps keeps it
@@ -214,7 +214,7 @@ impl Node {
             selection_group: false,
             window_drag: crate::el::WindowDrag::None,
             ime_cursor: false,
-            ime_option_as_alt: false,
+            ime_option_as_alt: crate::OptionAsAlt::None,
             moved_stub: true,
             epoch: 0,
         }

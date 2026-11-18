@@ -616,14 +616,15 @@ impl El {
         self.flags.set(ElFlags::IME_CURSOR, true);
         self
     }
-    /// With [`Self::ime_cursor`]: on macOS, while this caret has the input method, Option is the
-    /// Alt key. A key pressed with it arrives as the key it's on with `mods.alt` (`Tx::key_base`
-    /// its character) instead of the character the layout makes with Option, and the input method
-    /// composes nothing for it (winit's `OptionAsAlt::Both`): a terminal's Option-as-Meta. It
-    /// changes nothing elsewhere, nor while `on` is false.
-    pub fn ime_option_as_alt(mut self, on: bool) -> Self {
-        if on || !self.cold.is_empty() {
-            self.cold_mut().option_as_alt = on;
+    /// With [`Self::ime_cursor`]: on macOS, while this caret has the input method, the Option keys
+    /// `keys` names are the Alt key. A key pressed with one arrives as the key it's on with
+    /// `mods.alt` (`Tx::key_base` its character) instead of the character the layout makes with
+    /// Option, and the input method composes nothing for it: a terminal's Option-as-Meta. `true`
+    /// is both keys. It changes nothing elsewhere, nor for [`OptionAsAlt::None`].
+    pub fn ime_option_as_alt(mut self, keys: impl Into<crate::OptionAsAlt>) -> Self {
+        let keys = keys.into();
+        if keys != crate::OptionAsAlt::None || !self.cold.is_empty() {
+            self.cold_mut().option_as_alt = keys;
         }
         self
     }

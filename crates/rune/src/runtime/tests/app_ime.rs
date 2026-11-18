@@ -8,13 +8,15 @@ struct Editor {
     field: TextEdit,
     /// The app's editor draws its caret (and so has the input method).
     caret: bool,
+    /// The Option keys its caret asks to be Alt.
+    keys: crate::OptionAsAlt,
 }
 
 fn view(s: &Editor, _: &mut Cx<Editor>) -> El {
     col().size(300.0, 200.0).children([
         text_input(&s.field, TextStyle::new(14.0, 400.0)).key("field").size(200.0, 30.0).on_edit(|s: &mut Editor| &mut s.field),
         el().key("page").size(300.0, 100.0)
-            .children(s.caret.then(|| el().key("caret").absolute(40.0, 20.0).size(2.0, 18.0).ime_cursor())),
+            .children(s.caret.then(|| el().key("caret").absolute(40.0, 20.0).size(2.0, 18.0).ime_cursor().ime_option_as_alt(s.keys))),
     ])
 }
 
@@ -42,6 +44,18 @@ fn an_ime_cursor_turns_the_input_method_on_at_its_rect_unless_a_field_has_focus(
     rt.update(|s, _| { s.field.focused = false; s.caret = false; });
     rt.frame(0.0);
     assert_eq!(rt.ime_area, None, "no caret, no input method");
+}
+
+#[test]
+fn the_caret_with_the_input_method_names_its_option_keys_and_a_field_taking_it_drops_them() {
+    let mut rt = editor();
+    assert_eq!(rt.ime_option_as_alt, crate::OptionAsAlt::None);
+    rt.update(|s, _| s.keys = crate::OptionAsAlt::Left);
+    rt.frame(0.0);
+    assert_eq!(rt.ime_option_as_alt, crate::OptionAsAlt::Left, "only the left key, as the caret says");
+    rt.update(|s, _| s.field.focused = true);
+    rt.frame(0.0);
+    assert_eq!(rt.ime_option_as_alt, crate::OptionAsAlt::None, "the field's caret asks for none");
 }
 
 #[test]
