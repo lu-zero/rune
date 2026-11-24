@@ -1,0 +1,1 @@
+- **A select can fill its field.** `Select::fill` makes the field trigger take its parent's width. `Select::menu_width` sets the listbox width; without it the list stays sized to its labels, between 160 and 368.

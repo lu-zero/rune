@@ -49,6 +49,10 @@ pub struct Select {
     options: Vec<(Option<String>, String)>,
     details: Vec<Option<String>>,
     width: f32,
+    /// The field fills its parent instead of `width`.
+    fill: bool,
+    /// The listbox width, in place of sizing it to the labels.
+    menu_width: Option<f32>,
     current: Option<String>,
     placeholder: String,
     name: Option<String>,
@@ -72,6 +76,8 @@ impl Select {
             options: options.iter().map(|o| (None, o.as_ref().to_owned())).collect(),
             details: Vec::new(),
             width: 280.0,
+            fill: false,
+            menu_width: None,
             current: None,
             placeholder: String::new(),
             name: None,
@@ -102,6 +108,16 @@ impl Select {
     /// The field trigger's width in points (default 280).
     pub fn width(mut self, w: f32) -> Self {
         self.width = w;
+        self
+    }
+    /// The field fills its parent instead of [`Self::width`].
+    pub fn fill(mut self) -> Self {
+        self.fill = true;
+        self
+    }
+    /// The listbox's width, in place of sizing it to the labels.
+    pub fn menu_width(mut self, w: f32) -> Self {
+        self.menu_width = Some(w);
         self
     }
     pub fn current(mut self, c: Option<&str>) -> Self {
@@ -311,21 +327,23 @@ impl Select {
             after_item = true;
         }
         let name = self.name.clone().unwrap_or_else(|| self.placeholder.clone());
+        let mut surface = col()
+            .key(content_key(&self.key))
+            .role("listbox")
+            .label(name)
+            .focus_group()
+            .focus_return(&anchor_key)
+            .max_h(LISTBOX_MAX_HEIGHT)
+            .min_h(0.0)
+            .shrink()
+            .radius(6.0)
+            .fill(c.layer_01);
+        surface = match self.menu_width {
+            Some(w) => surface.w(w),
+            None => surface.min_w(160.0).max_w(368.0),
+        };
         let content = k.elevate(
-            col()
-                .key(content_key(&self.key))
-                .role("listbox")
-                .label(name)
-                .focus_group()
-                .focus_return(&anchor_key)
-                .min_w(160.0)
-                .max_w(368.0)
-                .max_h(LISTBOX_MAX_HEIGHT)
-                .min_h(0.0)
-                .shrink()
-                .radius(6.0)
-                .fill(c.layer_01)
-                .child(fit_scroll_bar(k, &self.key, list)),
+            surface.child(fit_scroll_bar(k, &self.key, list)),
             &k.elevation.floating,
         );
         push_anchored_modal(k, layer, self.dismiss, content, &anchor_key, self.placement, 2.0);
@@ -371,9 +389,9 @@ impl Select {
                 k.overlay_state(t, self.state, hover, !disabled)
             }
             SelectAppearance::Field => {
-                let mut t = trigger
-                    .w(self.width)
-                    .h(28.0)
+                let mut t = trigger.h(28.0);
+                t = if self.fill { t.w_full() } else { t.w(self.width) };
+                t = t
                     .pr(6.0)
                     .gap(8.0)
                     .radius(k.radius.md)

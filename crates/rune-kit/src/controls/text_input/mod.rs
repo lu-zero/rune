@@ -538,6 +538,20 @@ impl TextInput {
         self.edits.submit(f);
         self
     }
+    /// Runs when the window loses focus while the field is mounted. Return stays
+    /// [`Self::on_submit`]. The frame commits because the handler takes FocusLost.
+    pub fn on_blur<S: 'static>(mut self, f: impl Fn(&mut S, &mut Tx) + 'static) -> Self {
+        self.edits.handlers.push(Box::new(move |e: El| {
+            e.on_physical_input(move |s: &mut S, event, tx| {
+                if !matches!(event, rune::PhysicalInput::FocusLost) {
+                    return false;
+                }
+                f(s, tx);
+                true
+            })
+        }));
+        self
+    }
     /// The trailing copy or clear button's press.
     pub fn on_action<S: 'static>(mut self, f: impl Fn(&mut S, &mut Tx) + 'static) -> Self {
         self.copy_acts.press_tx(f);
