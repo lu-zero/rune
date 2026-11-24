@@ -1,0 +1,1 @@
+- **`El::ime_option_as_alt` takes the Option keys: `OptionAsAlt::Left`, `Right`, `Both` or `None`.** A terminal can make one Option key Alt and leave the other typing the layout's characters, as iTerm2's per-key setting does; the window sets winit's `OnlyLeft` or `OnlyRight`. `true` and `false` still mean both and none.

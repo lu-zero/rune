@@ -162,7 +162,7 @@ pub(crate) struct Node {
     pub(super) window_drag: crate::el::WindowDrag,
     pub(super) ime_cursor: bool,
     /// `El::ime_option_as_alt`.
-    pub(super) ime_option_as_alt: bool,
+    pub(super) ime_option_as_alt: crate::OptionAsAlt,
     /// Participates in its parent's normal flow (`position != Absolute && display != None`).
     pub(super) in_flow: bool,
     /// Exiting in-flow child whose main-axis slot is collapsing analytically (`hold_layout`).
@@ -239,7 +239,7 @@ impl Node {
             selection_group: false,
             window_drag: crate::el::WindowDrag::None,
             ime_cursor: false,
-            ime_option_as_alt: false,
+            ime_option_as_alt: crate::OptionAsAlt::None,
             in_flow: old.in_flow,
             collapsing: false,
             moved_stub: true,

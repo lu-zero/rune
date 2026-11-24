@@ -184,7 +184,7 @@ fn cold_packing_handles_el_only_cold_meta_only_and_shared_clones() {
     assert_eq!(by_key(&owned_unique, "el-only").motion, own_spring);
     assert!(by_key(&owned_unique, "el-only").animated_changes);
     assert_eq!(by_key(&owned_unique, "el-only").time_scale, 0.5);
-    assert!(by_key(&owned_unique, "el-only").ime_option_as_alt);
+    assert_eq!(by_key(&owned_unique, "el-only").ime_option_as_alt, crate::OptionAsAlt::Both);
     assert!(!by_key(&owned_unique, "pic-only").cold.is_empty());
     assert_eq!(by_key(&owned_unique, "pic-only").pixel_aspect, Some(2.0));
     let matched = by_key(&owned_unique, "matched-motion");

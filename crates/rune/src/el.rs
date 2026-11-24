@@ -67,7 +67,7 @@ pub(crate) use handlers::{A11yActionFn, DragEndFn, DragFn, DragOutFn, InputKeyFn
 pub(crate) use help::{HELP_KEY, HELP_ROW, help_words};
 pub use input::{InputSpec, auto_grow, edit_access, text_input};
 #[doc(hidden)]
-pub use layout::PathBind;
+pub use layout::{OptionAsAlt, PathBind};
 pub use pills::{InlineIcon, InlineImage};
 pub(crate) use rare::{ElCold, ElFlags, RoleTag};
 pub use rune_motion::Cycle;

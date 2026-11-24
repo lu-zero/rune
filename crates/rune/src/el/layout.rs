@@ -3,6 +3,26 @@
 
 use super::*;
 
+/// Which Option keys an [`El::ime_cursor`] treats as Alt on macOS.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OptionAsAlt {
+    /// Neither key: both type the layout's characters.
+    #[default]
+    None,
+    /// Only the left Option key.
+    Left,
+    /// Only the right Option key.
+    Right,
+    /// Both keys.
+    Both,
+}
+
+impl From<bool> for OptionAsAlt {
+    fn from(on: bool) -> Self {
+        if on { Self::Both } else { Self::None }
+    }
+}
+
 impl El {
     #[inline]
     pub fn w(mut self, w: f32) -> Self {
@@ -708,13 +728,14 @@ impl El {
         self.flags.set(ElFlags::IME_CURSOR, true);
         self
     }
-    /// With [`Self::ime_cursor`]: on macOS, while this caret has the input method, Option is the
-    /// Alt key. A key pressed with it arrives as the key it's on with `mods.alt` (`Tx::key_base`
-    /// its character) instead of the character the layout makes with Option, and the input method
-    /// composes nothing for it (winit's `OptionAsAlt::Both`): a terminal's Option-as-Meta. It
-    /// changes nothing elsewhere, nor while `on` is false.
-    pub fn ime_option_as_alt(mut self, on: bool) -> Self {
-        if on || !self.cold.is_empty() {
+    /// Which Option keys act as Alt while an [`Self::ime_cursor`] owns the input method.
+    ///
+    /// `true` means [`OptionAsAlt::Both`] and `false` means [`OptionAsAlt::None`], so existing
+    /// callers keep working. A terminal can leave one Option key for the characters its layout
+    /// makes with it and use the other as Meta.
+    pub fn ime_option_as_alt(mut self, on: impl Into<OptionAsAlt>) -> Self {
+        let on = on.into();
+        if on != OptionAsAlt::None || !self.cold.is_empty() {
             self.cold_mut().option_as_alt = on;
         }
         self
@@ -927,5 +948,20 @@ impl PathBind {
     pub fn child(&mut self, child: El) -> &mut Self {
         self.children.push(child);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn option_as_alt_names_one_key_or_keeps_bool_callers() {
+        assert_eq!(OptionAsAlt::from(true), OptionAsAlt::Both);
+        assert_eq!(OptionAsAlt::from(false), OptionAsAlt::None);
+        let mut left = el().ime_option_as_alt(OptionAsAlt::Left);
+        assert_eq!(left.cold_mut().option_as_alt, OptionAsAlt::Left);
+        let mut both = el().ime_option_as_alt(true);
+        assert_eq!(both.cold_mut().option_as_alt, OptionAsAlt::Both);
     }
 }

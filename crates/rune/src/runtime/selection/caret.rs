@@ -63,7 +63,7 @@ pub(crate) struct TextInputState {
     /// The composition `App::on_ime` currently has open.
     app_ime_comp: app_ime::AppComposition,
     /// The `El::ime_cursor` that has the input method asks for Option as Alt (`El::ime_option_as_alt`).
-    pub(crate) ime_option_as_alt: bool,
+    pub(crate) ime_option_as_alt: crate::OptionAsAlt,
     /// The shell cancels native composition before enabling the new text focus.
     pub(crate) ime_reset: bool,
     /// The focused spellchecked field's word at the caret (`spell::pause`).
@@ -103,7 +103,7 @@ impl TextInputState {
             caret_follow: false,
             caret_follow_check: None,
             app_ime_comp: Default::default(),
-            ime_option_as_alt: false,
+            ime_option_as_alt: crate::OptionAsAlt::None,
             ime_reset: false,
             spell_watch: None,
             #[cfg(any(target_os = "linux", test))]

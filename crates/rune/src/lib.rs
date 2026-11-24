@@ -97,6 +97,7 @@ pub use el::GridRow;
 pub use el::GrowthSpec;
 pub use el::{InlineIcon, InlineImage};
 pub use el::LiveRegion;
+pub use el::OptionAsAlt;
 pub use el::Outline;
 #[doc(hidden)]
 pub use el::PathBind;
