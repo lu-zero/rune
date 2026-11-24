@@ -13,7 +13,7 @@ use winit::window::Window;
 
 use crate::edit::Ime;
 use crate::runtime::{AppDriver, RuntimeCore, Unhandled};
-use crate::window::{key_base, map_key_event, map_mods};
+use crate::window::{consumed_mods, key_base, map_key_event, map_mods, platform_text};
 
 /// Host-neutral key input over plain Rune types.
 pub(crate) struct KeyInput {
@@ -24,6 +24,8 @@ pub(crate) struct KeyInput {
     pub pressed: bool,
     pub repeat: bool,
     pub unhandled: Option<Unhandled>,
+    pub text: Option<String>,
+    pub consumed_mods: crate::Mods,
 }
 
 /// Host-neutral wheel input in window points (before dividing by `rt.zoom()`).
@@ -296,7 +298,7 @@ pub(crate) fn keyboard_core(
     if let Some(key) = input.physical {
         rt.physical_then(
             app,
-            crate::PhysicalInput::Key { key, mods: input.mods, pressed: input.pressed, repeat: input.repeat },
+            crate::PhysicalInput::Key { key, mods: input.mods, pressed: input.pressed, repeat: input.repeat, text: input.text, consumed_mods: input.consumed_mods },
             input.logical,
             input.base,
             input.unhandled,
@@ -344,6 +346,8 @@ pub(crate) fn keyboard(
             pressed,
             repeat: event.repeat,
             unhandled,
+            text: platform_text(event),
+            consumed_mods: consumed_mods(event, map_mods(mods), mods),
         },
     )
 }
@@ -661,7 +665,16 @@ pub(crate) fn sync_ime(window: &Window, rt: &mut RuntimeCore, ime_state: &mut Im
     #[cfg(target_os = "macos")]
     {
         use winit::platform::macos::{OptionAsAlt, WindowExtMacOS};
-        let want = if ime_allowed && rt.edit.ime_option_as_alt { OptionAsAlt::Both } else { OptionAsAlt::None };
+        let want = if !ime_allowed {
+            OptionAsAlt::None
+        } else {
+            match rt.edit.ime_option_as_alt {
+                crate::OptionAsAlt::None => OptionAsAlt::None,
+                crate::OptionAsAlt::Left => OptionAsAlt::OnlyLeft,
+                crate::OptionAsAlt::Right => OptionAsAlt::OnlyRight,
+                crate::OptionAsAlt::Both => OptionAsAlt::Both,
+            }
+        };
         if window.option_as_alt() != want {
             window.set_option_as_alt(want);
         }

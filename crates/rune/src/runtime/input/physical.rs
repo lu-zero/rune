@@ -1,6 +1,15 @@
 use super::*;
 use crate::{PhysicalInput, PhysicalKeyCode};
 
+/// Copies a scripted `Key::Text` into the physical event when the host left text empty.
+/// Does not guess `consumed_mods`.
+fn pair_platform_text(event: &mut PhysicalInput, key: Option<&KeyEvent>) {
+    let PhysicalInput::Key { text, .. } = event else { return };
+    if text.is_some() { return; }
+    let Some(crate::Key::Text(paired)) = key.map(|ev| &ev.key) else { return };
+    *text = Some(paired.clone());
+}
+
 pub(in crate::runtime) struct Fallback { key: KeyEvent, base: Option<char>, unhandled: Option<Unhandled> }
 
 /// What a window does with a logical key no handler took: close or minimize as its title-bar
@@ -96,7 +105,8 @@ impl RuntimeCore {
     }
     /// `physical_with_fallback`, with the key's unmodified character (`Tx::key_base`), and
     /// `unhandled` happens when no handler takes the logical key.
-    pub(crate) fn physical_then(&mut self, app: &mut dyn AppDriver, event: PhysicalInput, key: Option<KeyEvent>, base: Option<char>, unhandled: Option<Unhandled>) -> bool {
+    pub(crate) fn physical_then(&mut self, app: &mut dyn AppDriver, mut event: PhysicalInput, key: Option<KeyEvent>, base: Option<char>, unhandled: Option<Unhandled>) -> bool {
+        pair_platform_text(&mut event, key.as_ref());
         if self.cancel_drag_key(&event) { return true; }
         // A key ends a middle-click autoscroll, and does nothing else.
         if matches!(event, PhysicalInput::Key { pressed: true, .. }) && self.pointer.autoscroll_key() { return true; }

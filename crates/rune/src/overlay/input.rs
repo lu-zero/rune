@@ -382,7 +382,7 @@ impl OverlayCore {
         for pressed in changes {
             self.dirty |= app.physical_with_fallback(crate::PhysicalInput::Key {
                 key: winit::keyboard::KeyCode::Fn, mods: crate::window::map_mods(self.mods), pressed, repeat: false,
-            }, None);
+            text: None, consumed_mods: Default::default()}, None);
         }
     }
 

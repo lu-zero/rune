@@ -153,7 +153,7 @@ fn direct_commit_inserts_fullwidth_punctuation_into_focused_text_input() {
                 pressed: true,
                 repeat: false,
                 unhandled: None,
-            });
+             text: None, consumed_mods: Default::default() });
         }
         dc.end();
         rt.frame(0.0);
@@ -168,7 +168,7 @@ fn direct_commit_inserts_fullwidth_punctuation_into_focused_text_input() {
                 pressed: false,
                 repeat: false,
                 unhandled: None,
-            });
+             text: None, consumed_mods: Default::default() });
         }
         rt.frame(0.0);
     }
@@ -188,7 +188,7 @@ fn direct_commit_inserts_fullwidth_punctuation_into_focused_text_input() {
             pressed: true,
             repeat: false,
             unhandled: None,
-        });
+         text: None, consumed_mods: Default::default() });
     }
     dc.end();
     rt.frame(0.0);
@@ -202,7 +202,7 @@ fn direct_commit_inserts_fullwidth_punctuation_into_focused_text_input() {
             pressed: false,
             repeat: false,
             unhandled: None,
-        });
+         text: None, consumed_mods: Default::default() });
     }
     rt.frame(0.0);
 
@@ -223,7 +223,7 @@ fn direct_commit_inserts_fullwidth_punctuation_into_focused_text_input() {
             pressed: true,
             repeat: false,
             unhandled: None,
-        });
+         text: None, consumed_mods: Default::default() });
     }
     dc.end();
     rt.frame(0.0);

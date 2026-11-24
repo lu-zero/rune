@@ -146,7 +146,7 @@ impl State {
         let fallback = key_event(xkb, self.compose.for_key(compose_action), key, physical, pressed, repeat);
         if let Some(code) = physical {
             self.input.push(Input::Physical(
-                crate::PhysicalInput::Key { key: code, mods, pressed, repeat },
+                crate::PhysicalInput::Key { key: code, mods, pressed, repeat , text: None, consumed_mods: Default::default()},
                 fallback,
             ));
         } else if let Some(key) = fallback {

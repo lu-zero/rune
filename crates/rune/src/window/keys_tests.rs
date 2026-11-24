@@ -29,7 +29,7 @@ fn dvorak_shift_command_o_reaches_the_app_with_a_field_focused() {
     let logical = map_key(&WKey::Character("O".into()), command | ModifiersState::SHIFT).unwrap();
     rt.physical_with_fallback(PhysicalInput::Key {
         key: PhysicalKeyCode::KeyS, mods: logical.mods, pressed: true, repeat: false,
-    }, Some(logical));
+    text: None, consumed_mods: Default::default()}, Some(logical));
     rt.frame(0.0);
     assert!(rt.state.opened);
     assert!(rt.state.edit.text.is_empty(), "the chord did not type into the field");
@@ -50,7 +50,7 @@ fn dvorak_paste_uses_the_logical_character_not_the_physical_period() {
     assert_eq!(logical.key, Key::Command('v'));
     rt.physical_with_fallback(PhysicalInput::Key {
         key: PhysicalKeyCode::Period, mods: logical.mods, pressed: true, repeat: false,
-    }, Some(logical));
+    text: None, consumed_mods: Default::default()}, Some(logical));
     rt.frame(0.0);
     let target = rt.edit.paste_request.take().expect("Dvorak Command-V requests the clipboard");
     rt.paste_result(target, crate::ClipboardContent::new("Dictated reply"));
@@ -209,7 +209,7 @@ fn dead_key_sequences_type_their_text_and_insert_into_a_field() {
     let send = |rt: &mut Runtime<Field>, key: KeyCode, logical: WKey, text: Option<&str>, mods: ModifiersState| {
         let ev = map_parts(cfg!(target_os = "windows"), code(key), &logical, text, mods);
         rt.physical_with_fallback(
-            PhysicalInput::Key { key, mods: map_mods(mods), pressed: true, repeat: false },
+            PhysicalInput::Key { key, mods: map_mods(mods), pressed: true, repeat: false , text: None, consumed_mods: Default::default()},
             ev,
         );
         rt.frame(0.0);
@@ -602,7 +602,7 @@ fn web_key_and_base_table_matches_chrome_and_native_across_layouts() {
             });
             rt.frame(0.0);
             rt.physical_key_input(
-                PhysicalInput::Key { key: case.physical, mods: ev.mods, pressed: true, repeat: false },
+                PhysicalInput::Key { key: case.physical, mods: ev.mods, pressed: true, repeat: false , text: None, consumed_mods: Default::default()},
                 ev,
                 canvas_base,
             );
@@ -663,4 +663,21 @@ fn web_key_and_base_table_matches_chrome_and_native_across_layouts() {
             }
         }
     }
+}
+
+#[test]
+fn consumed_mods_excludes_what_the_layout_spent_on_text() {
+    use super::consumed_from;
+    let mut mods = crate::Mods::default();
+    mods.alt = true;
+    assert!(consumed_from(mods, Some("å"), Some("a")).alt);
+    assert!(!consumed_from(mods, None, None).alt);
+    let mut shift = crate::Mods::default();
+    shift.shift = true;
+    assert!(!consumed_from(shift, Some("a"), Some("a")).shift);
+    let mut ctrl_alt = mods;
+    ctrl_alt.ctrl = true;
+    let altgr = consumed_from(ctrl_alt, Some("@"), Some("q"));
+    assert!(altgr.alt);
+    assert_eq!(altgr.ctrl, cfg!(target_os = "windows"), "AltGr is a Windows chord");
 }

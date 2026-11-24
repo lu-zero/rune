@@ -58,7 +58,7 @@ impl Host {
         for pressed in changes {
             redraw |= self.app.physical_with_fallback(crate::PhysicalInput::Key {
                 key: winit::keyboard::KeyCode::Fn, mods: map_mods(self.mods), pressed, repeat: false,
-            }, None);
+            text: None, consumed_mods: Default::default()}, None);
         }
         if redraw { l.request_redraw(); }
     }

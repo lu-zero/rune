@@ -289,7 +289,7 @@ fn keyboard_core_handles_unidentified_repeat_paste_fallback_and_release_gating()
             pressed: true,
             repeat: true,
             unhandled: None,
-        })
+         text: None, consumed_mods: Default::default() })
     };
     assert!(redraw);
     rt.frame(0.0);
@@ -306,7 +306,7 @@ fn keyboard_core_handles_unidentified_repeat_paste_fallback_and_release_gating()
             pressed: false,
             repeat: false,
             unhandled: None,
-        })
+         text: None, consumed_mods: Default::default() })
     };
     assert!(!redraw);
 
@@ -321,7 +321,7 @@ fn keyboard_core_handles_unidentified_repeat_paste_fallback_and_release_gating()
             pressed: true,
             repeat: false,
             unhandled: None,
-        })
+         text: None, consumed_mods: Default::default() })
     };
     assert!(redraw);
     rt.frame(0.0);
@@ -345,7 +345,7 @@ fn keyboard_core_handles_unidentified_repeat_paste_fallback_and_release_gating()
             pressed: true,
             repeat: false,
             unhandled: None,
-        })
+         text: None, consumed_mods: Default::default() })
     };
     assert!(redraw);
     rt.frame(0.0);
@@ -365,7 +365,7 @@ fn keyboard_core_handles_unidentified_repeat_paste_fallback_and_release_gating()
             pressed: true,
             repeat: false,
             unhandled: None,
-        })
+         text: None, consumed_mods: Default::default() })
     };
     assert!(redraw);
     rt.frame(0.0);
@@ -387,7 +387,7 @@ fn keyboard_core_handles_unidentified_repeat_paste_fallback_and_release_gating()
             pressed: false,
             repeat: false,
             unhandled: None,
-        })
+         text: None, consumed_mods: Default::default() })
     };
     assert!(redraw);
     rt.frame(0.0);
@@ -980,4 +980,40 @@ fn web_touch_end_does_not_activate_while_popup_menu_is_open_or_touch_ended_in_me
     rt.frame(0.0);
     assert!(rt.popup_menu().is_some());
     assert!(!act.should_activate(rt.core()));
+}
+
+#[test]
+fn platform_text_and_consumed_mods_reach_the_physical_handler() {
+    #[derive(Default)]
+    struct S { seen: Vec<crate::PhysicalInput> }
+    fn view(_: &S, _: &mut Cx<S>) -> El {
+        el().key("pane").size(100.0, 100.0).focusable(true)
+            .on_physical_input(|s: &mut S, ev, _| { s.seen.push(ev.clone()); false })
+    }
+    let mut rt = Runtime::new(S::default(), view, (100.0, 100.0), Env::default());
+    rt.frame(0.0);
+    rt.update(|_, tx| tx.focus("pane", false));
+    rt.frame(0.0);
+    let mut alt = crate::Mods::default();
+    alt.alt = true;
+    let (core, mut app) = rt.split_mut();
+    keyboard_core(core, &mut app, KeyInput {
+        physical: Some(crate::PhysicalKeyCode::KeyA),
+        logical: None,
+        base: None,
+        mods: alt,
+        pressed: true,
+        repeat: false,
+        unhandled: None,
+        text: Some("å".to_owned()),
+        consumed_mods: alt,
+    });
+    rt.frame(0.0);
+    match &rt.state.seen[0] {
+        crate::PhysicalInput::Key { text, consumed_mods, .. } => {
+            assert_eq!(text.as_deref(), Some("å"));
+            assert_eq!(*consumed_mods, alt);
+        }
+        other => panic!("expected a key event, got {other:?}"),
+    }
 }

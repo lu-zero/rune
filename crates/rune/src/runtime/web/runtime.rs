@@ -184,7 +184,7 @@ impl RuntimeCore {
         let activate = event_key.key == crate::Key::Tab;
         let repeat = flag("repeat");
         if let Some(key) = code {
-            self.physical_then(app, crate::PhysicalInput::Key { key, mods, pressed: true, repeat }, Some(event_key), base, None);
+            self.physical_then(app, crate::PhysicalInput::Key { key, mods, pressed: true, repeat , text: None, consumed_mods: Default::default()}, Some(event_key), base, None);
         } else if repeat {
             self.repeat_key(event_key);
         } else {

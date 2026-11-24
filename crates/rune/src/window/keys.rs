@@ -145,6 +145,42 @@ fn map_parts_with_mods(windows: bool, physical: PhysicalKey, logical: &WKey, tex
     Some(ev)
 }
 
+/// The platform string already paired with this key, as the terminal encoder needs it.
+/// A chord's control byte stays out: the encoder derives that from Ctrl itself.
+pub(crate) fn platform_text(event: &winit::event::KeyEvent) -> Option<String> {
+    let text = event.text.as_deref()?;
+    (!text.is_empty()).then(|| text.to_owned())
+}
+
+/// Modifiers the platform spent producing [`platform_text`].
+pub(crate) fn consumed_mods(
+    event: &winit::event::KeyEvent,
+    mods: crate::Mods,
+    state: ModifiersState,
+) -> crate::Mods {
+    let text = event.text.as_deref().filter(|t| !t.is_empty());
+    let base = key_base(event, state).map(|c| c.to_string());
+    consumed_from(mods, text, base.as_deref())
+}
+
+fn consumed_from(mods: crate::Mods, text: Option<&str>, base: Option<&str>) -> crate::Mods {
+    let differs = match (text, base) {
+        (Some(text), Some(base)) => text != base,
+        (Some(_), None) => true,
+        _ => false,
+    };
+    let mut consumed = crate::Mods::default();
+    // Windows Left Ctrl + Left Alt that already typed text is AltGr.
+    if cfg!(target_os = "windows") && mods.ctrl && mods.alt && text.is_some() {
+        consumed.ctrl = true;
+        consumed.alt = true;
+        return consumed;
+    }
+    if mods.alt && differs { consumed.alt = true; }
+    if mods.shift && !mods.ctrl && differs { consumed.shift = true; }
+    consumed
+}
+
 /// The character `event`'s key types under the current layout with no modifiers, for
 /// `Tx::key_base`.
 pub(crate) fn key_base(event: &winit::event::KeyEvent, m: ModifiersState) -> Option<char> {
